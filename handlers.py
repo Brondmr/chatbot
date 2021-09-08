@@ -46,7 +46,7 @@ class Handle:
             context['city_of_departure'] = self.cities_departure[departure]
             return True
         else:
-            context['cities'] = self.write_warning(self.cities_departure)
+            context['cities'] = self.write_warning(set(self.cities_departure))
             return False
 
     def handle_arrival_city(self, text, context):
@@ -57,13 +57,13 @@ class Handle:
             context['arrival_city'] = arrival
             return True
         else:
-            context['cities'] = self.write_warning(self.cities_arrival)
+            context['cities'] = self.write_warning(set(self.cities_arrival))
             return False
 
     def handle_date(self, text, context):
         today = datetime.now()
         self.read_json()
-        date = re.search("(0[1-9]|1[0-9]|2[0-9]|3[0-1])-(0[1-9]|1[0-2])-202[1-3]", text)
+        date = re.search("^(0[1-9]|1[0-9]|2[0-9]|3[0-1])-(0[1-9]|1[0-2])-202[1-3]$", text)
         if date:
             date = date.group()
             self.get_date(context)
@@ -76,12 +76,12 @@ class Handle:
                 else:
                     warn = 'Вы выбрали дату, которая уже прошла. Выберите предстоящую дату.' \
                            ' Ближайшие даты вылета относительно введенной даты:\n\n'
-                    context['wrong_dates'] = warn + self.write_warning(self.get_nearest_dates(date))
+                    context['wrong_dates'] = warn + self.write_warning(set(self.get_nearest_dates(date)))
                     return False
             else:
                 warn = 'В указанную дату рейсов не обнаружено. Выберите подходящую дату.' \
                        ' Ближайшие даты вылета относительно введенной даты:\n\n'
-                context['wrong_dates'] = warn + self.write_warning(self.get_nearest_dates(date))
+                context['wrong_dates'] = warn + self.write_warning(set(self.get_nearest_dates(date)))
                 return False
         else:
             context['wrong_dates'] = 'Дата введена некорректно. Повторите попытку.'
@@ -95,7 +95,8 @@ class Handle:
             for number, context_time in enumerate(context['times'].split('—')):
                 if time in context_time:
                     context['time'] = time
-                    context['company'] = context['companies'].split('—')[number].replace('.', '')[:-1]
+                    print(number)
+                    context['company'] = context['companies'].split('—')[number].replace('.', '')
                     landing_time = datetime.today() + timedelta(hours=random.randint(1, 7))
                     landing_time = datetime.strftime(landing_time, '%H:%M')
                     context['landing_time'] = landing_time
@@ -103,11 +104,11 @@ class Handle:
             else:
                 warn = 'В указанное время рейсов не обнаружено. Выберите подходящее время.' \
                        ' Рейсы относительно введенной даты:\n\n'
-                context['times'] = warn + self.write_warning(self.times)
+                context['times'] = warn + self.write_warning(set(self.times))
                 return False
         else:
             warn = 'Время введено некорректно. Повторите попытку. Рейсы относительно введенной даты:\n\n'
-            context['times'] = warn + self.write_warning(self.times)
+            context['times'] = warn + self.write_warning(set(self.times))
             return False
 
     def handle_number_of_places(self, text, context):
@@ -213,7 +214,7 @@ class Handle:
                 json_date = f'{day}-{months[month]}-2021'
                 self.dates[json_date] = date
 
-    def get_time(self, context, date):
+    def get_time(self, context):
         """
         Получение данных о времени из json по указанных параметрам
 
@@ -226,7 +227,7 @@ class Handle:
                 for time, company in time_and_company.items():
                     self.times.append(time)
                     self.companies.append(company)
-        context['times'] = self.write_warning(self.times)
+        context['times'] = self.write_warning(set(self.times))
         context['companies'] = self.write_warning(self.companies)
 
     def get_nearest_dates(self, missing_date):
@@ -271,7 +272,6 @@ class Handle:
             return word
 
     def write_warning(self, entities):
-        entities = set(entities)
         warning = ''
         for entity in sorted(entities):
             warning += f'— {entity}.\n'
